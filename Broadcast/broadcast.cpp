@@ -10,13 +10,13 @@
 
 #define ERRORE_RICEZIONE "Errore nella ricezione\n"
 
+int broadcast_port;
+
 void* ascoltatore(void*);
-void lancia_shell(SocketUDP*, int);
+void lancia_shell(SocketUDP*);
 
 int main(int argc, char *argv[]) {
 	SocketUDP *udp;
-	
-	int broadcast_port;
 	
 	pthread_t ascolta;
 	
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
 	pthread_create(&ascolta, NULL, ascoltatore, (void*)udp);
 	
-	lancia_shell(udp, broadcast_port);
+	lancia_shell(udp);
 	
 	delete udp;
 }
@@ -75,9 +75,9 @@ char *input_str()
 	return strdup(buffer);
 }
 
-void lancia_shell(SocketUDP *udp, int port) {
+void lancia_shell(SocketUDP *udp) {
 	char *lettura;
-	Address addr(BROADCAST_IP, port);
+	Address addr(BROADCAST_IP, broadcast_port);
 	
 	while(strcmp(lettura = input_str(), EXIT_CMD)) {
 		
