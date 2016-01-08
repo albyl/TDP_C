@@ -4,57 +4,43 @@
 
 #include "../socket.hpp"
 
-typedef struct {
-	SocketUDP *udp;
-	Address  *addr;
-} param_t;
+#define MY_ADDR "0.0.0.0"
+#define BROADCAST_IP "255.255.255.255"
+#define EXIT_CMD "exit"
+
+#define ERRORE_RICEZIONE "Errore nella ricezione\n"
 
 void* ascoltatore(void*);
-void lancia_shell(SocketUDP*, Address);
+void lancia_shell(SocketUDP*, int);
 
 int main(int argc, char *argv[]) {
-	Address *bctAddr;
 	SocketUDP *udp;
-	Address *mittente;
 	
-	char *broadcast_ip;
 	int broadcast_port;
 	
-	param_t p;
 	pthread_t ascolta;
 	
-	if(argc != 3) {
-		printf("USAGE: %s IND PORT\n", argv[0]);
+	if(argc != 2) {
+		printf("USAGE: %s PORT\n", argv[0]);
 		return -1;
 	}
 	
-	broadcast_ip = argv[1];
-	broadcast_port = atoi(argv[2]);
+	broadcast_port = atoi(argv[1]);
 	
-	bctAddr = new Address(broadcast_ip, broadcast_port);
-	
-	udp = new SocketUDP(bctAddr);
-	udp->enableBroadcast();
-	
-	mittente = new Address();
- 	
-	p.udp  = udp;
-	p.addr = mittente;
-	
+	udp = new SocketUDP(strdup(MY_ADDR), broadcast_port);
+	udp->enableBroadcast();	
 
-	pthread_create(&ascolta, NULL, ascoltatore, (void*)&p);
+	pthread_create(&ascolta, NULL, ascoltatore, (void*)udp);
 	
-	lancia_shell(udp, *bctAddr);
+	lancia_shell(udp, broadcast_port);
 	
 	delete udp;
-	delete mittente;
 }
 
-void* ascoltatore(void *p) {
-	param_t *param = (param_t*)p;
+void* ascoltatore(void *p) {	
+	SocketUDP *udp = (SocketUDP*)p;
 	
-	Address *mittente = param->addr;
-	SocketUDP *udp = param->udp;
+	Address *mittente = new Address();
 	
 	char *dato, *da;
 		
@@ -70,10 +56,11 @@ void* ascoltatore(void *p) {
 			free(dato);
 		}
 		else {
-			printf("Errore nella ricezione\n");
+			printf(ERRORE_RICEZIONE"\n");
 		}
-
 	}
+	
+	delete mittente;
 }
 
 char *input_str()
@@ -88,13 +75,13 @@ char *input_str()
 	return strdup(buffer);
 }
 
-void lancia_shell(SocketUDP *udp, Address addr) {
+void lancia_shell(SocketUDP *udp, int port) {
 	char *lettura;
+	Address addr(BROADCAST_IP, port);
 	
-	while(strcmp(lettura = input_str(), "exit")) {
+	while(strcmp(lettura = input_str(), EXIT_CMD)) {
 		
 		udp->invia(addr, lettura);
-		
 		
 		free(lettura);
 	}
