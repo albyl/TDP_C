@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
 	if(!tcp->connetti(Address("0.0.0.0", 54321)))
 		printf("Errore connessione\n");
 	
-	printf("%s", tcp->conn->ricevi());
+	printf("%s\n", tcp->ricevi());
 	
 	delete tcp;
 }

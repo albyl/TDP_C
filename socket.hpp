@@ -18,7 +18,10 @@
 
 #define MAX_CONN 50
 
-#define DEBUG
+
+typedef enum {UDP = SOCK_DGRAM, TCP=SOCK_STREAM} Protocollo;
+
+//#define DEBUG
 
 /*
  * Permette l'identificazione di un processo memorizzando
@@ -55,23 +58,153 @@ class Address {
 		/*
 		 * Interfaccia per funzioni native
 		 */
-		struct sockaddr* get_sockaddr()
-			{ return (struct sockaddr*)&addr; }
+		void set_sockaddr(struct sockaddr_in new_addr) { addr = new_addr; }
+		struct sockaddr_in get_sockaddr()
+			{ return addr; }
+};
+
+class Socket {
+	protected:
+		int sock_id;
 		
-		/*bool operator(Address a1, Address a2) {
-			bool ret;
-			char *ind1 = a1.getIp();
-			char *ind2 = a2.getIp();
-			
-			int cmp = strcmp(ind1, ind2);
-			
-			free(ind1); free(ind2);
-			
-			if(cmp < 0) return false;
-			if(cmp > 0) return true;
-			
-			return a1.getPort() < a2.getPort();
-		}*/
+		Socket(int, Address* = NULL);
+		Socket(int, char*, int);
+		~Socket() {shutdown(sock_id, SHUT_RDWR);}
+};
+
+class SocketUDP : public Socket {
+	public:
+		/*
+		 * Un socket si basa su un Address, è possibile passarlo
+		 * direttamente o specificare solo indirizzo ip e porta
+		 * lasciando il compito al costruttore
+		 */
+		SocketUDP() : Socket(SOCK_DGRAM) {}
+		SocketUDP(Address *addr) : Socket(SOCK_DGRAM, addr) {}
+		SocketUDP(char *ip, int port) : Socket(SOCK_DGRAM, ip, port) {}
+		
+		/*
+		 * Gestione invio e ricezione
+		 */
+		bool invia(Address, char*);
+		char* ricevi(Address*);
+		
+		bool enableBroadcast();
+};
+
+class Node {
+	protected:
+		Node* next = NULL;
+	public:
+		virtual void* getKey() { return NULL; }
+		void set_next(Node *new_next)  { next = new_next; }
+		Node* get_next() { return next; }
+		
+		virtual void mostraKey() {};
+		
+		virtual ~Node();
+};
+
+class Iterator;
+
+class Lista {
+	private:
+		Node *first;
+		void delete_all(Node*);
+	
+	public:
+		Lista() { first = NULL; }
+		~Lista();
+		
+		Node* getFirst() { return first; }
+		
+		void add(Node*);
+		
+		void scorri();
+		
+		Iterator* createIterator();
+};
+
+class Iterator {
+	private:
+		Lista *_lista;
+		Node *_nodo;
+	public:
+		Iterator(Lista *lista) : _lista(lista) { 
+#ifdef DEBUG
+			printf("Primo elemento\n");
+#endif
+			goFirst();
+		}
+		
+		Node* goFirst();
+		Node* moveNext();
+		bool isDone();
+		Node* getCurrent();
+};
+
+class Connessione {
+	protected:
+		int sock_id;
+		Address addr;
+	public:
+		Connessione(int new_sock_id, Address new_addr)
+		    : sock_id(new_sock_id), addr(new_addr) {}
+		
+		bool invia(char *);
+		char* ricevi();
+};
+
+class SocketTCP : public Socket {
+	public:
+		SocketTCP() : Socket(SOCK_STREAM) {}
+		SocketTCP(Address *addr) : Socket(SOCK_STREAM, addr) {}
+		SocketTCP(char *ip, int port) : Socket(SOCK_STREAM, ip, port) {}
+};
+
+class ConnessioneServer : public Connessione, public Node {
+	public:
+		ConnessioneServer(int new_sock_id, Address new_addr)
+			: Connessione(new_sock_id, new_addr) {}
+		
+		~ConnessioneServer();
+				
+		void* getKey();
+		void mostraKey();
+};
+
+class ServerTCP : public SocketTCP {
+	private:
+		Lista *connessioni;
+	public:		
+		ServerTCP(Address*);
+		~ServerTCP();
+		ServerTCP(char* ip, int port) : ServerTCP(new Address(ip, port)) {}
+		
+		ConnessioneServer* accetta();
+		
+		Iterator* createIterator() { return connessioni->createIterator(); }
+};
+
+
+class ConnessioneClient : public Connessione {
+	public:
+		ConnessioneClient(int new_sock_id, Address new_addr)
+			: Connessione(new_sock_id, new_addr) {}
+};
+
+class ClientTCP : public SocketTCP {
+	private:
+		ConnessioneClient *conn;
+	public:
+
+		ClientTCP() : SocketTCP() {}
+		~ClientTCP() { delete conn; }
+		
+		bool connetti(Address);
+		
+		bool invia(char*);
+		char* ricevi();
 };
 
 Address::Address(char *ip, int port) {
@@ -102,65 +235,44 @@ char* Address::toString() {
 	return strdup(buffer);
 }
 
-class Socket {
-	protected:
-		int sock_id;
-		
-		Socket(int tipo);
-		~Socket() {shutdown(sock_id, SHUT_RDWR);}
-		Socket(Address, int);
-		Socket(char*, int, int);
-};
-
-Socket::Socket(int tipo) {
+Socket::Socket(int tipo, Address* addr) {
+#ifdef DEBUG
+	int ret;
+#endif
+	
 	this->sock_id = socket(AF_INET, tipo, 0);
 	
 #ifdef DEBUG
 	printf("Socket: %d\n", this->sock_id);
-#endif
-}
-
-Socket::Socket(Address addr, int tipo) : Socket(tipo) {
-	int ret;
+#endif	
 	
-	ret = bind(this->sock_id, addr.get_sockaddr(), sizeof(struct sockaddr));
+	if(addr) {
+	
+		struct sockaddr_in sAddr = addr->get_sockaddr();
+#ifdef DEBUG	
+		ret =
+#endif
+		bind(this->sock_id, (struct sockaddr*)&sAddr, sizeof(struct sockaddr));
 	
 #ifdef DEBUG
 	printf("Bind: %d\n", ret);
 #endif
+	}
 }
 
-Socket::Socket(char *ip, int port, int tipo)
-    : Socket(Address(ip, port), tipo) {}
- 
-class SocketUDP : public Socket {
-	public:
-		/*
-		 * Un socket si basa su un Address, è possibile passarlo
-		 * direttamente o specificare solo indirizzo ip e porta
-		 * lasciando il compito al costruttore
-		 */
-		SocketUDP() : Socket(SOCK_DGRAM) {}
-		SocketUDP(Address addr) : Socket(addr, SOCK_DGRAM) {}
-		SocketUDP(char *ip, int port) : Socket(ip, port, SOCK_DGRAM) {}
-		
-		/*
-		 * Gestione invio e ricezione
-		 */
-		bool invia(Address, char*);
-		char* ricevi(Address*);
-		
-		bool enableBroadcast();
-};
+Socket::Socket(int tipo, char *ip, int port)
+    : Socket(tipo, new Address(ip, port)) {}
 
 bool SocketUDP::invia(Address dest, char *msg) {
 	int ret_code;
+	
+	struct sockaddr_in sAddr = dest.get_sockaddr();
 	
 	// Lo salvo perchè viene usato in più di un posto
 	int len_msg = strlen(msg)+1;
 	
 	ret_code = sendto(this->sock_id, msg, len_msg, 0,
-	                  dest.get_sockaddr(),
+	                  (struct sockaddr*)&sAddr,
 	                  sizeof(struct sockaddr));
 	                  
 	return ret_code == len_msg;
@@ -170,14 +282,18 @@ char* SocketUDP::ricevi(Address *mit) {
 	char buffer[MAX_STR + 1];
 	int ret_code;
 	
+	struct sockaddr_in sAddr = mit->get_sockaddr();
+	
 	int len_addr = sizeof(struct sockaddr);
 	
 	ret_code = recvfrom(this->sock_id, buffer, MAX_STR, 0,
-	                    mit->get_sockaddr(),
+	                    (struct sockaddr*)&sAddr,
 	                    (socklen_t*)&len_addr);
 	
 	if(ret_code <= 0)
 		return NULL;
+		
+	mit->set_sockaddr(sAddr);
 	
 	buffer[ret_code] = '\0';
 	
@@ -191,35 +307,31 @@ bool SocketUDP::enableBroadcast() {
 	                   &val, sizeof(int));
 }
 
-class Node {
-	protected:
-		Node* next = NULL;
-		virtual void* getKey() = 0;
-	public:
-		~Node();
-		void set_next(Node *new_next)  { next = new_next; }
-		
-		virtual void mostraKey() = 0;
-};
-
 Node::~Node() {
-	if(next)
-		delete next;
+#ifdef DEBUG
+	printf("Distruttore nodo");
+#endif
 }
 
-class Lista {
-	Node *first;
-	
-	public:
-		Lista() { first = NULL; }
-		~Lista();
-		void add(Node*);
-		
-		void scorri();
-};
+void Lista::delete_all(Node *n) {
+	if(n->get_next()) {
+		this->delete_all(n->get_next());
+	}
+#ifdef DEBUG
+	printf("Elimina nodo\n");
+#endif
+	delete n;
+}
 
 Lista::~Lista() {
-	delete first;
+#ifdef DEBUG
+	printf("Elimina lista\n");
+#endif
+	delete_all(first);
+}
+
+Iterator* Lista::createIterator() {
+	return new Iterator(this);
 }
 
 void Lista::scorri() {
@@ -231,17 +343,19 @@ void Lista::add(Node *new_node) {
 	first = new_node;
 }
 
-class Connessione {
-	protected:
-		int sock_id;
-		Address addr;
-	public:
-		Connessione(int new_sock_id, Address new_addr)
-		    : sock_id(new_sock_id), addr(new_addr) {}
-		
-		bool invia(char *);
-		char* ricevi();
-};
+Node* Iterator::goFirst() {
+	return (_nodo = _lista->getFirst());
+}
+Node* Iterator::moveNext() {
+	return (_nodo = _nodo->get_next());
+}
+bool Iterator::isDone() {
+
+	return (_nodo == NULL);
+}
+Node* Iterator::getCurrent() {
+	return _nodo;
+}
 
 bool Connessione::invia(char *msg) {
 	int ret_code;
@@ -271,61 +385,45 @@ char* Connessione::ricevi() {
 	return strdup(buffer);
 }
 
-class SocketTCP : public Socket {
-	public:
-		SocketTCP() : Socket(SOCK_STREAM) {}
-		SocketTCP(Address addr) : Socket(addr, SOCK_STREAM) {}
-		SocketTCP(char *ip, int port) : Socket(ip, port, SOCK_STREAM) {}
-};
-
-class ServerTCP : public SocketTCP {
-	private:
-		
-	public:
-		class ConnessioneServer : public Connessione, public Node {
-			public:
-				ConnessioneServer(int new_sock_id, Address new_addr)
-					: Connessione(new_sock_id, new_addr) {}
-				~ConnessioneServer() {
+ConnessioneServer::~ConnessioneServer() {
 #ifdef DEBUG
-					printf("Chisura sock %d\n", sock_id);
+	printf("Chisura sock %d\n", sock_id);
 #endif
-					close(sock_id);
-				}
-				
-				void* getKey() {
-					return (void*)&sock_id;
-				}
-				
-				void mostraKey() {
-					printf("- %d\n", *(int*)this->getKey());
-					if(next)
-						next->mostraKey();
-				}
-		};
-		
-		Lista *connessioni;
-		
-		ServerTCP(Address addr);
-		~ServerTCP() { delete connessioni; }
-		ServerTCP(char* ip, int port) : ServerTCP(Address(ip, port)) {}
-		
-		ConnessioneServer* accetta();
-};
+	close(sock_id);
+}
 
-ServerTCP::ServerTCP(Address addr) : SocketTCP(addr) {
+void* ConnessioneServer::getKey() {
+	return (void*)&sock_id;
+}
+
+void ConnessioneServer::mostraKey() {
+	printf("- %d\n", *(int*)this->getKey());
+	if(next)
+		next->mostraKey();
+}
+
+ServerTCP::ServerTCP(Address *addr) : SocketTCP(addr) {
 	listen(sock_id, MAX_CONN);
 	
 	connessioni = new Lista();
 }
 
-ServerTCP::ConnessioneServer* ServerTCP::accetta() {
+ServerTCP::~ServerTCP() {
+#ifdef DEBUG
+	printf("Elimina server");
+#endif
+	delete connessioni;
+}
+
+ConnessioneServer* ServerTCP::accetta() {
 	Address addr;
 	ConnessioneServer* conn;
 	
+	struct sockaddr_in sAddr = addr.get_sockaddr();
+	
 	socklen_t len = sizeof(struct sockaddr);
 	
-	int sock = accept(sock_id, addr.get_sockaddr(), (socklen_t*)&len);
+	int sock = accept(sock_id, (struct sockaddr*)&sAddr, (socklen_t*)&len);
 #ifdef DEBUG
 	printf("%s\n", strerror(errno));
 #endif
@@ -339,26 +437,19 @@ ServerTCP::ConnessioneServer* ServerTCP::accetta() {
 	return conn;
 }
 
-class ClientTCP : public SocketTCP {
-	public:
-		class ConnessioneClient : public Connessione {
-			public:
-				ConnessioneClient(int new_sock_id, Address new_addr)
-					: Connessione(new_sock_id, new_addr) {}
-		};
-		
-		ConnessioneClient *conn;
+bool ClientTCP::connetti(Address addr) {
+	struct sockaddr_in sAddr = addr.get_sockaddr();
+	
+	conn = new ConnessioneClient(sock_id, addr);
+	return !connect(sock_id, (struct sockaddr*)&sAddr, sizeof(struct sockaddr_in));
+}
 
-		ClientTCP() : SocketTCP() {}
-		~ClientTCP() { delete conn; }
-		
-		bool connetti(Address addr) {
-			conn = new ConnessioneClient(sock_id, addr);
-			return !connect(sock_id, addr.get_sockaddr(), sizeof(struct sockaddr_in));
-		}
-		
-		bool invia(Address dest, char *msg);
-		char* ricevi(Address *mit);
-};
+bool ClientTCP::invia(char *msg) {
+	return conn->invia(msg);
+}
+
+char* ClientTCP::ricevi() {
+	return conn->ricevi();
+}
 
 #endif
