@@ -58,18 +58,18 @@ class Address {
 		/*
 		 * Interfaccia per funzioni native
 		 */
-		void set_sockaddr(struct sockaddr_in new_addr) { addr = new_addr; }
+		void set_sockaddr(struct sockaddr_in addr) { addr = addr; }
 		struct sockaddr_in get_sockaddr()
 			{ return addr; }
 };
 
 class Socket {
 	protected:
-		int sock_id;
+		int _sockId;
 		
 		Socket(int, Address* = NULL);
 		Socket(int, char*, int);
-		~Socket() {shutdown(sock_id, SHUT_RDWR);}
+		~Socket() {shutdown(_sockId, SHUT_RDWR);}
 };
 
 class SocketUDP : public Socket {
@@ -94,11 +94,11 @@ class SocketUDP : public Socket {
 
 class Node {
 	protected:
-		Node* next = NULL;
+		Node* _next = NULL;
 	public:
 		virtual void* getKey() { return NULL; }
-		void set_next(Node *new_next)  { next = new_next; }
-		Node* get_next() { return next; }
+		void set_next(Node *new_next)  { _next = new_next; }
+		Node* get_next() { return _next; }
 		
 		virtual void mostraKey() {};
 		
@@ -109,14 +109,14 @@ class Iterator;
 
 class Lista {
 	private:
-		Node *first;
+		Node *_first;
 		void delete_all(Node*);
 	
 	public:
-		Lista() { first = NULL; }
+		Lista() { _first = NULL; }
 		~Lista();
 		
-		Node* getFirst() { return first; }
+		Node* getFirst() { return _first; }
 		
 		void add(Node*);
 		
@@ -145,11 +145,11 @@ class Iterator {
 
 class Connessione {
 	protected:
-		int sock_id;
+		int _sockId;
 		Address addr;
 	public:
-		Connessione(int new_sock_id, Address new_addr)
-		    : sock_id(new_sock_id), addr(new_addr) {}
+		Connessione(int sockId, Address addr)
+		    : _sockId(sockId), addr(addr) {}
 		
 		bool invia(char *);
 		char* ricevi();
@@ -164,8 +164,8 @@ class SocketTCP : public Socket {
 
 class ConnessioneServer : public Connessione, public Node {
 	public:
-		ConnessioneServer(int new_sock_id, Address new_addr)
-			: Connessione(new_sock_id, new_addr) {}
+		ConnessioneServer(int sockId, Address addr)
+			: Connessione(sockId, addr) {}
 		
 		~ConnessioneServer();
 				
@@ -189,8 +189,8 @@ class ServerTCP : public SocketTCP {
 
 class ConnessioneClient : public Connessione {
 	public:
-		ConnessioneClient(int new_sock_id, Address new_addr)
-			: Connessione(new_sock_id, new_addr) {}
+		ConnessioneClient(int sockId, Address addr)
+			: Connessione(sockId, addr) {}
 };
 
 class ClientTCP : public SocketTCP {
@@ -240,10 +240,10 @@ Socket::Socket(int tipo, Address* addr) {
 	int ret;
 #endif
 	
-	this->sock_id = socket(AF_INET, tipo, 0);
+	this->_sockId = socket(AF_INET, tipo, 0);
 	
 #ifdef DEBUG
-	printf("Socket: %d\n", this->sock_id);
+	printf("Socket: %d\n", this->_sockId);
 #endif	
 	
 	if(addr) {
@@ -252,7 +252,7 @@ Socket::Socket(int tipo, Address* addr) {
 #ifdef DEBUG	
 		ret =
 #endif
-		bind(this->sock_id, (struct sockaddr*)&sAddr, sizeof(struct sockaddr));
+		bind(this->_sockId, (struct sockaddr*)&sAddr, sizeof(struct sockaddr));
 	
 #ifdef DEBUG
 	printf("Bind: %d\n", ret);
@@ -271,7 +271,7 @@ bool SocketUDP::invia(Address dest, char *msg) {
 	// Lo salvo perchè viene usato in più di un posto
 	int len_msg = strlen(msg)+1;
 	
-	ret_code = sendto(this->sock_id, msg, len_msg, 0,
+	ret_code = sendto(this->_sockId, msg, len_msg, 0,
 	                  (struct sockaddr*)&sAddr,
 	                  sizeof(struct sockaddr));
 	                  
@@ -286,7 +286,7 @@ char* SocketUDP::ricevi(Address *mit) {
 	
 	int len_addr = sizeof(struct sockaddr);
 	
-	ret_code = recvfrom(this->sock_id, buffer, MAX_STR, 0,
+	ret_code = recvfrom(this->_sockId, buffer, MAX_STR, 0,
 	                    (struct sockaddr*)&sAddr,
 	                    (socklen_t*)&len_addr);
 	
@@ -303,7 +303,7 @@ char* SocketUDP::ricevi(Address *mit) {
 bool SocketUDP::enableBroadcast() {
 	int val = 1;
 	
-	return !setsockopt(sock_id, SOL_SOCKET, SO_BROADCAST,
+	return !setsockopt(_sockId, SOL_SOCKET, SO_BROADCAST,
 	                   &val, sizeof(int));
 }
 
@@ -327,7 +327,7 @@ Lista::~Lista() {
 #ifdef DEBUG
 	printf("Elimina lista\n");
 #endif
-	delete_all(first);
+	delete_all(_first);
 }
 
 Iterator* Lista::createIterator() {
@@ -335,12 +335,12 @@ Iterator* Lista::createIterator() {
 }
 
 void Lista::scorri() {
-	first->mostraKey();
+	_first->mostraKey();
 }
 
 void Lista::add(Node *new_node) {
-	new_node->set_next(first);
-	first = new_node;
+	new_node->set_next(_first);
+	_first = new_node;
 }
 
 Node* Iterator::goFirst() {
@@ -362,7 +362,7 @@ bool Connessione::invia(char *msg) {
 	
 	int len_msg = strlen(msg)+1;
 	
-	ret_code = send(this->sock_id, msg, len_msg, 0);
+	ret_code = send(this->_sockId, msg, len_msg, 0);
 	                  
 	return ret_code == len_msg;
 }
@@ -371,10 +371,10 @@ char* Connessione::ricevi() {
 	char buffer[MAX_STR + 1];
 	int ret_code;
 	
-	ret_code = recv(this->sock_id, buffer, MAX_STR, 0);
+	ret_code = recv(this->_sockId, buffer, MAX_STR, 0);
 
 #ifdef DEBUG
-	printf("%d:%s\n", this->sock_id, strerror(errno));
+	printf("%d:%s\n", this->_sockId, strerror(errno));
 #endif
 	
 	if(ret_code <= 0)
@@ -387,23 +387,23 @@ char* Connessione::ricevi() {
 
 ConnessioneServer::~ConnessioneServer() {
 #ifdef DEBUG
-	printf("Chisura sock %d\n", sock_id);
+	printf("Chisura sock %d\n", _sockId);
 #endif
-	close(sock_id);
+	close(_sockId);
 }
 
 void* ConnessioneServer::getKey() {
-	return (void*)&sock_id;
+	return (void*)&_sockId;
 }
 
 void ConnessioneServer::mostraKey() {
 	printf("- %d\n", *(int*)this->getKey());
-	if(next)
-		next->mostraKey();
+	if(_next)
+		_next->mostraKey();
 }
 
 ServerTCP::ServerTCP(Address *addr) : SocketTCP(addr) {
-	listen(sock_id, MAX_CONN);
+	listen(_sockId, MAX_CONN);
 	
 	connessioni = new Lista();
 }
@@ -423,7 +423,7 @@ ConnessioneServer* ServerTCP::accetta() {
 	
 	socklen_t len = sizeof(struct sockaddr);
 	
-	int sock = accept(sock_id, (struct sockaddr*)&sAddr, (socklen_t*)&len);
+	int sock = accept(_sockId, (struct sockaddr*)&sAddr, (socklen_t*)&len);
 #ifdef DEBUG
 	printf("%s\n", strerror(errno));
 #endif
@@ -440,8 +440,8 @@ ConnessioneServer* ServerTCP::accetta() {
 bool ClientTCP::connetti(Address addr) {
 	struct sockaddr_in sAddr = addr.get_sockaddr();
 	
-	conn = new ConnessioneClient(sock_id, addr);
-	return !connect(sock_id, (struct sockaddr*)&sAddr, sizeof(struct sockaddr_in));
+	conn = new ConnessioneClient(_sockId, addr);
+	return !connect(_sockId, (struct sockaddr*)&sAddr, sizeof(struct sockaddr_in));
 }
 
 bool ClientTCP::invia(char *msg) {
