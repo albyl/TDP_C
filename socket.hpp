@@ -17,11 +17,11 @@
 #define MAX_STR_IP_PORT 23
 
 #define MAX_CONN 50
-
+#define SERVER_IP "0.0.0.0"
 
 typedef enum {UDP = SOCK_DGRAM, TCP=SOCK_STREAM} Protocollo;
 
-//#define DEBUG
+#define DEBUG
 
 /*
  * Permette l'identificazione di un processo memorizzando
@@ -36,7 +36,7 @@ class Address {
 	public:		
 		Address(char*, int);
 		Address() : Address("0.0.0.0", 0) {}
-		
+		Address(Address& new_addr);	
 		/*
 		 * La visibilità dell'indirizzo e della porta è pubblica,
 		 * ma l'accesso non è diretto, avviene tramite i metodi
@@ -151,8 +151,11 @@ class Connessione {
 		Connessione(int sockId, Address addr)
 		    : _sockId(sockId), addr(addr) {}
 		
-		bool invia(char *);
+		bool invia(char*);
 		char* ricevi();
+		bool invia(FILE*);
+
+		Address getAddress() { return addr; }
 };
 
 class SocketTCP : public Socket {
@@ -224,6 +227,10 @@ Address::Address(char *ip, int port) {
 		addr.sin_zero[i] = 0;
 }
 
+Address::Address(Address& new_addr) {
+	this->setPort(new_addr.getPort());
+	this->setIp(new_addr.getIp());
+}	
 char* Address::toString() {
 	char buffer[MAX_STR_IP_PORT];
 	char *ip = this->getIp();
@@ -367,6 +374,18 @@ bool Connessione::invia(char *msg) {
 	return ret_code == len_msg;
 }
 
+bool Connessione::invia(FILE *f) {
+	char buf[MAX_STR];
+	char lettura;
+	int i = 0;
+
+	while((buf[i++] = getc(f)) != EOF) {}
+	buf[--i] = '\0';
+
+	printf("Invio: %s", buf);
+
+	return this->invia(buf);
+}
 char* Connessione::ricevi() {
 	char buffer[MAX_STR + 1];
 	int ret_code;
@@ -378,8 +397,7 @@ char* Connessione::ricevi() {
 #endif
 	
 	if(ret_code <= 0)
-		return NULL;
-	
+		return NULL; 
 	buffer[ret_code] = '\0';
 	
 	return strdup(buffer);
@@ -429,6 +447,7 @@ ConnessioneServer* ServerTCP::accetta() {
 #endif
 	if(sock < 0)
 		return NULL;
+	addr.set_sockaddr(sAddr);
 		
 	conn = new ConnessioneServer(sock, addr);
 	
