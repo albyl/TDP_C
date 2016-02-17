@@ -117,9 +117,10 @@ class Lista {
 		~Lista();
 		
 		Node* getFirst() { return _first; }
-		
+			
 		void add(Node*);
-		
+		bool del(Node*);
+	
 		void scorri();
 		
 		Iterator* createIterator();
@@ -186,6 +187,7 @@ class ServerTCP : public SocketTCP {
 		
 		ConnessioneServer* accetta();
 		
+		bool close(ConnessioneServer*);
 		Iterator* createIterator() { return connessioni->createIterator(); }
 };
 
@@ -454,6 +456,39 @@ ConnessioneServer* ServerTCP::accetta() {
 	connessioni->add(conn);
 	
 	return conn;
+}
+
+bool ServerTCP::close(ConnessioneServer* conn)
+{
+	return connessioni->del(conn);
+}
+
+bool Lista::del(Node *conn)
+{
+	Node *prima = NULL;
+	Node *nodo = _first;	
+	
+	while(nodo != NULL && nodo != conn) {
+		prima = nodo;
+		nodo = nodo->get_next();
+	}
+
+	if(nodo == NULL) {
+		return false;
+	} // Non trovato
+	else if(prima == NULL) {
+#ifdef DEBUG
+		printf("Elimino il primo nodo\n");
+#endif
+		_first = nodo->get_next();
+	}
+	else {
+		prima->set_next(nodo->get_next());
+	}
+
+	delete nodo;
+	return true;
+	
 }
 
 bool ClientTCP::connetti(Address addr) {

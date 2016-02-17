@@ -41,7 +41,7 @@ int main(int argc, char* argv[]){
                 		fclose(file_home_page);
             		}
 
-            		//myself->chiudi(conn);               //va implementato, elimina la connessine dalla lista e poi chiama il distruttore di connessiones
+            		myself->close(conn);
         	}
     	}
 
