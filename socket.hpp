@@ -58,7 +58,7 @@ class Address {
 		/*
 		 * Interfaccia per funzioni native
 		 */
-		void set_sockaddr(struct sockaddr_in addr) { addr = addr; }
+		void set_sockaddr(struct sockaddr_in nAddr) { addr = nAddr; }
 		struct sockaddr_in get_sockaddr()
 			{ return addr; }
 };
@@ -66,10 +66,14 @@ class Address {
 class Socket {
 	protected:
 		int _sockId;
-		
+		Address *_addr = NULL;
+
 		Socket(int, Address* = NULL);
 		Socket(int, char*, int);
-		~Socket() {shutdown(_sockId, SHUT_RDWR);}
+		~Socket() {
+			shutdown(_sockId, SHUT_RDWR);
+			if(!_addr) delete _addr;
+		}
 };
 
 class SocketUDP : public Socket {
@@ -150,9 +154,7 @@ class Connessione {
 		Address *addr;
 	public:
 		Connessione(int sockId, Address *nAddr)
-		    : _sockId(sockId), addr(nAddr) { 
-printf("Passo");
-}
+		    : _sockId(sockId), addr(nAddr) { }
 		
 		bool invia(char*);
 		char* ricevi();
@@ -197,9 +199,7 @@ class ServerTCP : public SocketTCP {
 class ConnessioneClient : public Connessione {
 	public:
 		ConnessioneClient(int sockId, Address *addr)
-			: Connessione(sockId, addr) {
-printf("Ciao");
-}
+			: Connessione(sockId, addr) { }
 };
 
 class ClientTCP : public SocketTCP {
@@ -210,7 +210,7 @@ class ClientTCP : public SocketTCP {
 		ClientTCP() : SocketTCP() {}
 		~ClientTCP() { delete conn; }
 		
-		bool connetti(Address);
+		bool connetti(Address*);
 		
 		bool invia(char*);
 		char* ricevi();
@@ -327,12 +327,13 @@ Node::~Node() {
 }
 
 void Lista::delete_all(Node *n) {
-	if(n->get_next()) {
-		this->delete_all(n->get_next());
-	}
+
 #ifdef DEBUG
 	printf("Elimina nodo\n");
 #endif
+	if(n->get_next()) {
+		this->delete_all(n->get_next());
+	}
 	delete n;
 }
 
@@ -440,10 +441,10 @@ ServerTCP::~ServerTCP() {
 }
 
 ConnessioneServer* ServerTCP::accetta() {
-	Address addr;
+	Address *addr = new Address();
 	ConnessioneServer* conn;
 	
-	struct sockaddr_in sAddr = addr.get_sockaddr();
+	struct sockaddr_in sAddr = addr->get_sockaddr();
 	
 	socklen_t len = sizeof(struct sockaddr);
 	
@@ -453,7 +454,7 @@ ConnessioneServer* ServerTCP::accetta() {
 #endif
 	if(sock < 0)
 		return NULL;
-	addr.set_sockaddr(sAddr);
+	addr->set_sockaddr(sAddr);
 		
 	conn = new ConnessioneServer(sock, addr);
 	
@@ -487,6 +488,9 @@ bool Lista::del(Node *conn)
 		_first = nodo->get_next();
 	}
 	else {
+#ifdef DEBUG
+		printf("Elimino nodo intermedio");
+#endif
 		prima->set_next(nodo->get_next());
 	}
 

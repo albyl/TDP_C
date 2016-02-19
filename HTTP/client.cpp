@@ -23,12 +23,12 @@ int main(int argc, char *argv[]) {
 	
 	server = new Address(ip, port);
 	printf("Connessione\n");
-	if(myself->connetti(server))
+	if(!myself->connetti(server))
 		errore("Errore connessione", -2);
 
 	printf("Sto inviando");
 
-	if(myself->invia(HTTP_REQ))
+	if(!myself->invia(HTTP_REQ))
 		errore("Errore invio!", -3);
 	
 	printf("Passo"); 
@@ -36,11 +36,11 @@ int main(int argc, char *argv[]) {
 	if(!(answer = myself->ricevi()))
 		errore("Errore rivevuto", -4);
 
+	printf("%s\n", answer);
 	
 	if(!(strstr(answer, ANS_200OK)))
 		errore("Errore ricezione", -5);
 	
-	printf("Passo di qua\n");
 
 	free(answer);
 	if(!(answer = myself->ricevi()))
