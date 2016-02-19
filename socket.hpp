@@ -147,16 +147,18 @@ class Iterator {
 class Connessione {
 	protected:
 		int _sockId;
-		Address addr;
+		Address *addr;
 	public:
-		Connessione(int sockId, Address addr)
-		    : _sockId(sockId), addr(addr) {}
+		Connessione(int sockId, Address *nAddr)
+		    : _sockId(sockId), addr(nAddr) { 
+printf("Passo");
+}
 		
 		bool invia(char*);
 		char* ricevi();
 		bool invia(FILE*);
 
-		Address getAddress() { return addr; }
+		Address getAddress() { return *addr; }
 };
 
 class SocketTCP : public Socket {
@@ -168,7 +170,7 @@ class SocketTCP : public Socket {
 
 class ConnessioneServer : public Connessione, public Node {
 	public:
-		ConnessioneServer(int sockId, Address addr)
+		ConnessioneServer(int sockId, Address *addr)
 			: Connessione(sockId, addr) {}
 		
 		~ConnessioneServer();
@@ -194,8 +196,10 @@ class ServerTCP : public SocketTCP {
 
 class ConnessioneClient : public Connessione {
 	public:
-		ConnessioneClient(int sockId, Address addr)
-			: Connessione(sockId, addr) {}
+		ConnessioneClient(int sockId, Address *addr)
+			: Connessione(sockId, addr) {
+printf("Ciao");
+}
 };
 
 class ClientTCP : public SocketTCP {
@@ -372,7 +376,7 @@ bool Connessione::invia(char *msg) {
 	int len_msg = strlen(msg)+1;
 	
 	ret_code = send(this->_sockId, msg, len_msg, 0);
-	                  
+
 	return ret_code == len_msg;
 }
 
@@ -491,10 +495,17 @@ bool Lista::del(Node *conn)
 	
 }
 
-bool ClientTCP::connetti(Address addr) {
-	struct sockaddr_in sAddr = addr.get_sockaddr();
+bool ClientTCP::connetti(Address *addr) {
+	struct sockaddr_in sAddr = addr->get_sockaddr();
 	
+#ifdef DEBUG
+	printf("Connetto\n");
+
+#endif
 	conn = new ConnessioneClient(_sockId, addr);
+#ifdef DEBUG
+	printf("Creata connessione client");
+#endif
 	return !connect(_sockId, (struct sockaddr*)&sAddr, sizeof(struct sockaddr_in));
 }
 
@@ -506,4 +517,10 @@ char* ClientTCP::ricevi() {
 	return conn->ricevi();
 }
 
+void errore(char *str, int cod) {
+	printf("ERROR: %s", str);
+	printf("%d:%s\n", errno, strerror(errno));
+	printf("Returning %d to system\n", cod);
+	exit(cod);
+}
 #endif
