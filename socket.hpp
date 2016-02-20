@@ -484,6 +484,7 @@ bool Lista::del(Node *conn)
 	else if(prima == NULL) {
 #ifdef DEBUG
 		printf("Elimino il primo nodo\n");
+		printf("%s\n--\n", nodo->get_next() == NULL ? "ANche ultimo" : "Altri");
 #endif
 		_first = nodo->get_next();
 	}
