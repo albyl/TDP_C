@@ -35,6 +35,10 @@ int main(int argc, char* argv[]){
                 		conn->invia(HTTP_404);
             		}
 			else{
+				//FILE *f;
+				//f = fopen("header", "r");
+				//conn->invia(f);
+				//fclose(f);
 				printf("Invio pagina\n");
                 		//conn->invia(HTTP_200);
                 		conn->invia(file_home_page);

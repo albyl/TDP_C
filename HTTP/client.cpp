@@ -5,7 +5,7 @@
 #define HTTP_REQ "GET / HTTP/1.1\
 "
 
-#define ANS_200OK "200 OK"
+#define ANS_200OK "OK 200"
 
 int main(int argc, char *argv[]) {
 	int port;
@@ -43,12 +43,12 @@ int main(int argc, char *argv[]) {
 	
 
 	free(answer);
-	if(!(answer = myself->ricevi()))
+	/*if(!(answer = myself->ricevi()))
 		errore("Errore pagina web", -6);
 	
 	printf("%s\n", answer);
 
-	free(answer);
+	free(answer);*/
 	delete server;
 	delete myself;
 
