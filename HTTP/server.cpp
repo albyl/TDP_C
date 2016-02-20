@@ -41,7 +41,7 @@ int main(int argc, char* argv[]){
                 		fclose(file_home_page);
             		}
 
-            		//myself->close(conn);
+            		myself->close(conn);
         	}
     	}
 	printf("Mi chiudo");

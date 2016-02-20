@@ -327,20 +327,13 @@ Node::~Node() {
 }
 
 void Lista::delete_all(Node *n) {
-
-#ifdef DEBUG
-	printf("Elimina nodo\n");
-#endif
-	if(n->get_next()) {
+	if(n) {
 		this->delete_all(n->get_next());
+		delete n;
 	}
-	delete n;
 }
 
 Lista::~Lista() {
-#ifdef DEBUG
-	printf("Elimina lista\n");
-#endif
 	delete_all(_first);
 }
 
@@ -484,6 +477,7 @@ bool Lista::del(Node *conn)
 	else if(prima == NULL) {
 #ifdef DEBUG
 		printf("Elimino il primo nodo\n");
+		printf("%s\n--", nodo->get_next() ? "Diverso" : "Uguale");
 #endif
 		_first = nodo->get_next();
 	}
