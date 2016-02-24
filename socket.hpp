@@ -159,6 +159,7 @@ class Connessione {
 		    }
 		
 		bool invia(char*);
+		bool invia(char*, int);
 		char* ricevi();
 		bool invia(FILE*);
 
@@ -372,11 +373,20 @@ Node* Iterator::getCurrent() {
 bool Connessione::invia(char *msg) {
 	int ret_code;
 	
-	int len_msg = strlen(msg)+1;
+	int len_msg = strlen(msg);
 	
 	ret_code = send(this->_sockId, msg, len_msg, 0);
 
 	return ret_code == len_msg;
+}
+
+
+bool Connessione::invia(char *msg, int len) {
+	int ret_code;
+	
+	ret_code = send(this->_sockId, msg, len, 0);
+
+	return ret_code == len;
 }
 
 bool Connessione::invia(FILE *f) {
@@ -384,12 +394,16 @@ bool Connessione::invia(FILE *f) {
 	char lettura;
 	int i = 0;
 
-	while((buf[i++] = getc(f)) != EOF) {}
-	buf[--i] = '\0';
+	//while((buf[i++] = getc(f)) != EOF) {}
+	//buf[--i] = '\0';
+	while(!feof(f))
+	{
+		int let = fread(buf, 1, MAX_STR, f);
+		this->invia(buf, let);
+	}
+	//printf("Invio: %s", buf);
 
-	printf("Invio: %s", buf);
-
-	return this->invia(buf);
+	//return this->invia(buf, i);
 }
 char* Connessione::ricevi() {
 	char buffer[MAX_STR + 1];
