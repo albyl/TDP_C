@@ -154,7 +154,9 @@ class Connessione {
 		Address *addr;
 	public:
 		Connessione(int sockId, Address *nAddr)
-		    : _sockId(sockId), addr(nAddr) { }
+		    : _sockId(sockId), addr(nAddr) {
+		   	printf("Conn\n");
+		    }
 		
 		bool invia(char*);
 		char* ricevi();
@@ -199,7 +201,10 @@ class ServerTCP : public SocketTCP {
 class ConnessioneClient : public Connessione {
 	public:
 		ConnessioneClient(int sockId, Address *addr)
-			: Connessione(sockId, addr) { }
+			: Connessione(sockId, addr) {
+				printf("ConnCLietn\n");       
+			}
+
 };
 
 class ClientTCP : public SocketTCP {
@@ -503,6 +508,7 @@ bool ClientTCP::connetti(Address *addr) {
 	conn = new ConnessioneClient(_sockId, addr);
 #ifdef DEBUG
 	printf("Creata connessione client");
+	fflush(stdout);
 #endif
 	return !connect(_sockId, (struct sockaddr*)&sAddr, sizeof(struct sockaddr_in));
 }

@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
 
 	if(argc != 3) return -1;
 	
-	port = atoi(argv[1]);
-	ip = argv[2];
+	port = atoi(argv[2]);
+	ip = argv[1];
 
 	myself = new ClientTCP();
 	

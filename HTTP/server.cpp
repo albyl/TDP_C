@@ -36,8 +36,9 @@ int main(int argc, char* argv[]){
             		}
 			else{
 				printf("Invio pagina\n");
-                		//conn->invia(HTTP_200);
-                		conn->invia(file_home_page);
+                		conn->invia("HTTP/1.1 200 OK\n\n");
+                		//conn->invia("<html>Ciao</html>");
+				conn->invia(file_home_page);
                 		fclose(file_home_page);
             		}
 
