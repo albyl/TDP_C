@@ -162,6 +162,7 @@ class Connessione {
 		bool invia(char*, int);
 		char* ricevi();
 		bool invia(FILE*);
+		void riceviToFile(char *file_name);
 
 		Address getAddress() { return *addr; }
 };
@@ -210,12 +211,12 @@ class ConnessioneClient : public Connessione {
 
 class ClientTCP : public SocketTCP {
 	private:
-		ConnessioneClient *conn;
 	public:
 
 		ClientTCP() : SocketTCP() {}
 		~ClientTCP() { delete conn; }
 		
+		ConnessioneClient *conn;
 		bool connetti(Address*);
 		
 		bool invia(char*);
@@ -390,21 +391,37 @@ bool Connessione::invia(char *msg, int len) {
 }
 
 bool Connessione::invia(FILE *f) {
-	char buf[MAX_STR];
+	char *buf;
 	char lettura;
-	int i = 0;
+	int sz;
 
-	//while((buf[i++] = getc(f)) != EOF) {}
-	//buf[--i] = '\0';
-	while(!feof(f))
-	{
-		int let = fread(buf, 1, MAX_STR, f);
-		this->invia(buf, let);
-	}
-	//printf("Invio: %s", buf);
+	fseek(f, 0L, SEEK_END);
+	sz = ftell(f);
+	
+	buf = (char*)malloc(sz);
 
-	//return this->invia(buf, i);
+	fseek(f, 0L, SEEK_SET);
+
+	int let = fread(buf, 1, sz, f);
+	this->invia(buf, let);
 }
+
+void Connessione::riceviToFile(char *file_name) {
+	int ret_code; 	
+	char buf[1024*1024];
+	FILE *f;
+	
+	ret_code = recv(this->_sockId, buf, 1024*1024, 0);
+
+	printf("Ricevuti %d bytes\n", ret_code);
+
+	f = fopen(file_name, "w");
+
+	fwrite(buf, 1, ret_code, f);
+
+	fclose(f);
+}
+
 char* Connessione::ricevi() {
 	char buffer[MAX_STR + 1];
 	int ret_code;
